@@ -1,0 +1,111 @@
+{
+  "theme": "Light mode default (for high visibility in outdoor parking conditions). Archetype 4 (Swiss & High-Contrast) adapted for mobile utility.",
+  "typography": {
+    "heading_font": "Manrope",
+    "body_font": "IBM Plex Sans",
+    "hierarchy": {
+      "h1": "text-4xl tracking-tight font-black",
+      "h2": "text-2xl tracking-tight font-bold",
+      "h3": "text-xl font-semibold",
+      "body": "text-base leading-relaxed font-medium",
+      "label": "text-xs tracking-[0.2em] uppercase font-bold text-gray-500",
+      "license_plate": "text-3xl font-mono uppercase tracking-widest text-black"
+    },
+    "rules": [
+      "NEVER use Inter, Roboto, Open Sans, or Lato.",
+      "Headings must use tight letter spacing.",
+      "Labels must be uppercase with wide spacing."
+    ]
+  },
+  "colors": {
+    "background": "#FAFAFA",
+    "surface": "#FFFFFF",
+    "primary": "#002FA7",
+    "primary_foreground": "#FFFFFF",
+    "accent_warning": "#FFD700",
+    "accent_danger": "#FF3333",
+    "text_main": "#0A0A0A",
+    "text_muted": "#666666",
+    "border": "#E5E5E5",
+    "success": "#16A34A",
+    "rules": [
+      "No full-screen gradients. Use flat, structural colors.",
+      "Ensure text meets APCA standards.",
+      "Hover states must be explicitly set and be a lighter hue of the active color."
+    ]
+  },
+  "layouts": {
+    "mobile_container": "w-full max-w-md mx-auto min-h-screen bg-[#FAFAFA] pb-24 shadow-[0_0_40px_rgba(0,0,0,0.05)]",
+    "spacing": "Use generous padding: p-6 or p-8 inside main containers to prevent text collision.",
+    "alignment": "Left-align forms and dense content. Center-align the main search input to command attention.",
+    "grid": "Use grid-cols-1 for all mobile views. Use small gap (gap-4) for lists."
+  },
+  "component_guidelines": {
+    "buttons": "Pill-shaped (rounded-full) or sharp rectangle (rounded-md max 8px). Massive tap targets (min-h-[56px]) for the 'Call' button.",
+    "inputs": "For license plate search: Massive input field, centered text, mono font, tracking wide. For forms: Shadcn input, customized with 1px border, no shadow, bg-white.",
+    "cards": "Go cardless or use flat rectangular styles (max 8px border-radius) with 1px subtle border. NO blurry drop shadows.",
+    "header": "Sticky top, crystal glassmorphism (backdrop-blur-xl bg-white/80 border-b border-gray-200/50). Must not overlap content without padding.",
+    "navigation": "Bottom fixed tab bar (backdrop-blur-xl bg-white/90 border-t border-gray-200) for switching between 'Search/Directory' and 'My Vehicle'. Do not use a hamburger menu.",
+    "modals": "Use Shadcn dialogs with solid backgrounds, NO glassmorphism for forms."
+  },
+  "visual_enhancers": {
+    "borders": "1px sharp borders to create technical clarity.",
+    "empty_states": "Use ASCII art or simple Phosphor/Lucide icons with a muted, playful tone.",
+    "textures": "Subtle noise overlay (opacity 2-3%) on the background to remove digital flatness."
+  },
+  "image_urls": {
+    "hero_background": {
+      "url": "https://images.unsplash.com/photo-1750768526677-8ce294bd7476?crop=entropy&cs=srgb&fm=jpg&ixid=M3w4NjAzNDR8MHwxfHNlYXJjaHwzfHxwYXJraW5nJTIwbG90JTIwdG9wJTIwdmlld3xlbnwwfHx8fDE3ODM1NDI1NjZ8MA&ixlib=rb-4.1.0&q=85",
+      "category": "background",
+      "description": "Top view of a car parked, to be used with a heavy light/dark overlay as a subtle header background"
+    },
+    "community_building": {
+      "url": "https://images.unsplash.com/photo-1545324418-cc1a3fa10c00?crop=entropy&cs=srgb&fm=jpg&ixid=M3w3NDk1ODB8MHwxfHNlYXJjaHwzfHxtb2Rlcm4lMjBhcGFydG1lbnQlMjBidWlsZGluZyUyMGV4dGVyaW9yfGVufDB8fHx8MTc4MzU0MjU2Nnww&ixlib=rb-4.1.0&q=85",
+      "category": "onboarding_or_about",
+      "description": "Modern apartment building exterior for the welcome screen or empty state"
+    }
+  },
+  "accessibility": {
+    "contrast": "Minimum 4.5:1 for all text. Focus states must have higher contrast with a visible ring (focus:ring-2 focus:ring-primary).",
+    "tap_targets": "Minimum 48x48px for all interactive elements.",
+    "motion": "Respect prefers-reduced-motion.",
+    "testing": "All interactive elements MUST include data-testid attribute (e.g., data-testid='search-input', data-testid='call-button')."
+  },
+  "motion": {
+    "interactions": "Hover and active states must trigger slight scale down (active:scale-95) for tactile feedback.",
+    "transitions": "Use transition-transform and transition-opacity specifically, NOT transition-all.",
+    "lists": "Staggered entrance animations for directory list items (framer-motion)."
+  },
+  "instructions_to_main_agent": [
+    "Build a mobile-first web app using React and Tailwind CSS.",
+    "Initialize Shadcn UI and add required components (input, button, dialog, tabs).",
+    "Do NOT use TypeScript. Ensure all components are in .js/.jsx.",
+    "Do NOT add transition-all anywhere.",
+    "Implement the directory data structure: id, ownerName, phone, flatNumber, vehicleNumber.",
+    "Since there is no backend mentioned, use React State or LocalStorage with mock initial data (at least 3 diverse vehicles).",
+    "Create a primary view with a massive 'Search License Plate' input. Auto-capitalize inputs.",
+    "Display search results immediately below. Each result must have a prominent 'Call' button wrapped in an <a> tag with href='tel:[phone_number]'.",
+    "Provide a full directory tab or section below the search.",
+    "Include an 'Add My Vehicle' flow via Shadcn Dialog.",
+    "Follow the typography scale STRICTLY. Max size is text-5xl.",
+    "Use Phosphor Icons (@phosphor-icons/react) or Lucide (lucide-react).",
+    "Ensure 'Shiv Sampada Parking' branding feels premium, not like a cheap template."
+  ],
+  "UNIVERSAL GUIDELINES FOR MAIN AGENT": [
+    "You tend to converge toward generic, 'on distribution' outputs. Avoid this: make creative, distinctive frontends that surprise and delight.",
+    "Dark colors look good when used independently without gradients. DO NOT use dark colors as gradients.",
+    "Don't make generic centered layouts, simplistic gradients, and uniform styling.",
+    "Create depth through layered design elements with z-index hierarchy.",
+    "Use glass-morphism effects with backdrop filters (12-24px blur).",
+    "You MUST NOT apply universal transition (e.g., transition: all). This breaks transforms.",
+    "You MUST NOT center align the app container (.App { text-align: center; }).",
+    "Always use modern button styles (pill-shaped or sharp) with interaction animations & color relevant to app style.",
+    "NEVER use AI assistant Emoji characters for icons.",
+    "Every interaction needs micro-animations - hover states, transitions, parallax effects, and entrance animations.",
+    "Use 2-3x more spacing than feels comfortable. Cramped designs look cheap.",
+    "Subtle grain textures, noise overlays, custom cursors, selection states, and loading animations separate good from extraordinary.",
+    "Missing categories (especially sponsor logos) = main agent will use placeholder text which is FORBIDDEN. Only use provided image URLs.",
+    "Prioritize using pre-existing components from src/components/ui when applicable.",
+    "Use `sonner` for toasts (located in /app/src/components/ui/sonner.js)."
+  ]
+}
