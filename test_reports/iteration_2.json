@@ -1,0 +1,19 @@
+{
+  "summary": "Verified Call button bug fix on VehicleCard. Directory renders vehicle cards. The green Call anchor has data-testid=call-btn-<id>, href=tel:+919876543210 (sanitized to digits with leading +), data-phone=+919876543210, and a React onClick handler attached. No regression: adding a vehicle via Add dialog still works and cards render plate/owner/flat/call correctly.",
+  "tested_scope": ["frontend", "integration"],
+  "passed": [
+    "Add Vehicle dialog opens, form fields (input-owner-name, input-phone, input-flat-number, input-vehicle-number) accept input and submit succeeds (toast 'Vehicle added')",
+    "Directory tab renders vehicle cards with data-testid vehicle-card-<id>, plate-<id>, owner-<id>, flat-<id>",
+    "Call anchor exists with data-testid=call-btn-<id>",
+    "Anchor href = 'tel:+919876543210' (starts with tel:, only digits and optional leading +)",
+    "data-phone attribute = '+919876543210' matches sanitized phone",
+    "React onClick handler is bound on the anchor (hasReactOnClick=true), providing the window.location.href fallback for sandboxed iframes",
+    "Clicking the button does not raise an error; browser handles tel: (no cross-navigation to another http URL, page.url unchanged as expected in headless)"
+  ],
+  "failed": [],
+  "action_items": [],
+  "success_rate": {"backend": "n/a (skipped)", "frontend": "100%"},
+  "retest_needed": false,
+  "full_testing_deferred": true,
+  "notes": "Headless browsers do not open a system dialer, so framenavigated is not emitted for tel: as expected. The presence of a valid tel: href, sanitized data-phone, correct testid, and a bound React onClick handler is sufficient proof of the fix per the review request."
+}

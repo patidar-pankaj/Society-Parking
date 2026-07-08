@@ -3,6 +3,18 @@ import { Button } from "./ui/button";
 
 export const VehicleCard = ({ vehicle, isOwned, onEdit, onDelete, index = 0 }) => {
   const cleanPhone = (vehicle.phone || "").replace(/[^\d+]/g, "");
+  const telHref = `tel:${cleanPhone}`;
+
+  const handleCall = (e) => {
+    // Ensure dialer opens even if the default anchor navigation is blocked
+    // by preview iframes, service workers, or handlers on parent elements.
+    e.stopPropagation();
+    try {
+      window.location.href = telHref;
+    } catch (_) {
+      // fall back to default anchor behaviour
+    }
+  };
 
   return (
     <div
@@ -41,8 +53,10 @@ export const VehicleCard = ({ vehicle, isOwned, onEdit, onDelete, index = 0 }) =
 
       <div className="flex gap-2">
         <a
-          href={`tel:${cleanPhone}`}
+          href={telHref}
+          onClick={handleCall}
           data-testid={`call-btn-${vehicle.id}`}
+          data-phone={cleanPhone}
           className="flex-1 inline-flex items-center justify-center gap-2 h-14 rounded-sm bg-[#16A34A] text-white font-bold text-base btn-brutalist hover:bg-[#15803d] active:scale-[0.98]"
         >
           <Phone className="w-5 h-5" strokeWidth={2.5} />
