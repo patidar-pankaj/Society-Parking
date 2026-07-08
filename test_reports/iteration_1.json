@@ -1,0 +1,29 @@
+{
+  "summary": "Backend CRUD + normalization and full frontend flow (add/search/edit/delete, tel: link, YOU badge, My Cars) tested on external URL. All checks passed.",
+  "tested_scope": ["backend", "frontend", "integration"],
+  "passed": [
+    "POST /api/vehicles creates vehicle (201) with id + created_at",
+    "POST duplicate plate (case/space variant 'mh01ab1234') returns 409",
+    "POST empty fields returns 422 validation error",
+    "GET /api/vehicles returns list sorted by created_at desc, no _id in payload",
+    "GET /api/vehicles?search=partial (URL-encoded 'mh 01' and 'ab12') matches normalized plate",
+    "GET /api/vehicles/{id} returns single vehicle; 404 for missing",
+    "PUT /api/vehicles/{id} updates fields; plate collision returns 409",
+    "DELETE /api/vehicles/{id} returns 204; subsequent GET 404",
+    "GET /api/stats returns {total_vehicles: N}",
+    "Frontend loads with Shiv Sampada header, Search/Directory/My Cars tabs, search input",
+    "Add dialog opens with 4 inputs (owner, phone, flat, vehicle)",
+    "Submitting valid vehicle closes dialog; card appears in Directory with plate/owner/flat and tel:+91... Call button",
+    "Duplicate plate (space/lower variant) shows error toast",
+    "Search tab partial search (case/space insensitive) filters correctly; Clear button works",
+    "Owned card shows YOU badge, Edit and Delete buttons (localStorage tracking)",
+    "Edit dialog pre-fills and saves updates",
+    "Delete AlertDialog confirms and removes card",
+    "My Cars tab shows only browser-owned vehicles"
+  ],
+  "failed": [],
+  "action_items": [],
+  "success_rate": {"backend": "100%", "frontend": "100%"},
+  "retest_needed": false,
+  "full_testing_deferred": true
+}
