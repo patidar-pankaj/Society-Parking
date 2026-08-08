@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import {
   Dialog,
   DialogContent,
@@ -36,6 +36,10 @@ const flatsByFloor = [1, 2, 3, 4, 5].map((floor) => ({
 export const AuthDialog = ({ open, onOpenChange, defaultTab = "login" }) => {
   const { login, signup } = useAuth();
   const [tab, setTab] = useState(defaultTab);
+
+  useEffect(() => {
+    if (open) setTab(defaultTab);
+  }, [defaultTab, open]);
 
   const [loginFlat, setLoginFlat] = useState("");
   const [loginPassword, setLoginPassword] = useState("");
