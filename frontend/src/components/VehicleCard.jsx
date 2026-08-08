@@ -15,126 +15,105 @@ export const VehicleCard = ({ vehicle, canEdit, isMine, onEdit, onDelete, index 
 
   return (
     <div
-      className="card-flat overflow-hidden fade-up"
+      className="card-flat p-4 sm:p-5 fade-up"
       style={{ animationDelay: `${Math.min(index, 8) * 40}ms` }}
       data-testid={`vehicle-card-${vehicle.id}`}
     >
-      {vehicle.photo ? (
-        <div className="relative border-b-[1.5px] border-black bg-black">
-          <img
-            src={vehicle.photo}
-            alt={`Vehicle ${vehicle.vehicle_number}`}
-            className="w-full h-40 object-cover"
-            data-testid={`photo-${vehicle.id}`}
-            loading="lazy"
-          />
-          <div className="absolute top-2 left-2">
-            <div className="plate-badge text-sm" data-testid={`plate-${vehicle.id}`}>
-              {vehicle.vehicle_number}
-            </div>
-          </div>
-          <div className="absolute top-2 right-2 flex items-center gap-1.5">
-            {vehicle.is_guest && (
-              <span
-                className="text-[0.6rem] tracking-[0.2em] font-bold uppercase bg-[#FFD700] text-black px-2 py-1 rounded-sm border-[1.5px] border-black"
-                data-testid={`guest-badge-${vehicle.id}`}
-              >
-                Guest
-              </span>
-            )}
-            {isMine && (
-              <span
-                className="text-[0.6rem] tracking-[0.2em] font-bold uppercase bg-[#002FA7] text-white px-2 py-1 rounded-sm border-[1.5px] border-black"
-                data-testid={`owned-badge-${vehicle.id}`}
-              >
-                You
-              </span>
-            )}
-          </div>
+      <div className="flex items-start justify-between gap-3 mb-3">
+        <div className="plate-badge text-base" data-testid={`plate-${vehicle.id}`}>
+          {vehicle.vehicle_number}
         </div>
-      ) : null}
+        <div className="flex items-center gap-1.5">
+          {vehicle.is_guest && (
+            <span
+              className="text-[0.6rem] tracking-[0.2em] font-bold uppercase bg-[#FFD700] text-black px-2 py-1 rounded-sm border-[1.5px] border-black"
+              data-testid={`guest-badge-${vehicle.id}`}
+            >
+              Guest
+            </span>
+          )}
+          {isMine && (
+            <span
+              className="text-[0.6rem] tracking-[0.2em] font-bold uppercase bg-[#002FA7] text-white px-2 py-1 rounded-sm"
+              data-testid={`owned-badge-${vehicle.id}`}
+            >
+              You
+            </span>
+          )}
+        </div>
+      </div>
 
-      <div className="p-4 sm:p-5">
-        {!vehicle.photo && (
-          <div className="flex items-start justify-between gap-3 mb-3">
-            <div className="plate-badge text-base" data-testid={`plate-${vehicle.id}`}>
-              {vehicle.vehicle_number}
-            </div>
-            <div className="flex items-center gap-1.5">
-              {vehicle.is_guest && (
-                <span
-                  className="text-[0.6rem] tracking-[0.2em] font-bold uppercase bg-[#FFD700] text-black px-2 py-1 rounded-sm border-[1.5px] border-black"
-                  data-testid={`guest-badge-${vehicle.id}`}
-                >
-                  Guest
-                </span>
-              )}
-              {isMine && (
-                <span
-                  className="text-[0.6rem] tracking-[0.2em] font-bold uppercase bg-[#002FA7] text-white px-2 py-1 rounded-sm"
-                  data-testid={`owned-badge-${vehicle.id}`}
-                >
-                  You
-                </span>
-              )}
-            </div>
-          </div>
-        )}
-
-        <div className="space-y-1.5 mb-4">
+      <div className="flex items-center gap-3 mb-4">
+        <div className="flex-1 min-w-0 space-y-1.5">
           <div className="flex items-center gap-2 text-sm">
             {vehicle.is_guest ? (
-              <UserCheck className="w-4 h-4 text-gray-500" />
+              <UserCheck className="w-4 h-4 text-gray-500 shrink-0" />
             ) : (
-              <User className="w-4 h-4 text-gray-500" />
+              <User className="w-4 h-4 text-gray-500 shrink-0" />
             )}
-            <span className="font-semibold text-black" data-testid={`owner-${vehicle.id}`}>
+            <span
+              className="font-semibold text-black truncate"
+              data-testid={`owner-${vehicle.id}`}
+            >
               {vehicle.owner_name}
             </span>
           </div>
           <div className="flex items-center gap-2 text-sm">
-            <Home className="w-4 h-4 text-gray-500" />
-            <span className="font-medium text-gray-700" data-testid={`flat-${vehicle.id}`}>
+            <Home className="w-4 h-4 text-gray-500 shrink-0" />
+            <span
+              className="font-medium text-gray-700 truncate"
+              data-testid={`flat-${vehicle.id}`}
+            >
               {vehicle.is_guest ? "Visiting " : ""}Flat {vehicle.flat_number}
             </span>
           </div>
         </div>
 
-        <div className="flex gap-2">
-          <a
-            href={telHref}
-            onClick={handleCall}
-            data-testid={`call-btn-${vehicle.id}`}
-            data-phone={cleanPhone}
-            className="flex-1 inline-flex items-center justify-center gap-2 h-14 rounded-sm bg-[#16A34A] text-white font-bold text-base btn-brutalist hover:bg-[#15803d] active:scale-[0.98]"
-          >
-            <Phone className="w-5 h-5" strokeWidth={2.5} />
-            <span>Call {vehicle.phone}</span>
-          </a>
+        {vehicle.photo && (
+          <img
+            src={vehicle.photo}
+            alt={`Vehicle ${vehicle.vehicle_number}`}
+            className="w-20 h-20 object-cover rounded-sm border-[1.5px] border-black shrink-0"
+            data-testid={`photo-${vehicle.id}`}
+            loading="lazy"
+          />
+        )}
+      </div>
 
-          {canEdit && (
-            <>
-              <button
-                type="button"
-                onClick={() => onEdit?.(vehicle)}
-                data-testid={`edit-btn-${vehicle.id}`}
-                className="h-14 w-14 flex items-center justify-center rounded-sm bg-white border-[1.5px] border-black btn-brutalist hover:bg-gray-100"
-                aria-label="Edit vehicle"
-              >
-                <Pencil className="w-5 h-5 text-black" />
-              </button>
-              <button
-                type="button"
-                onClick={() => onDelete?.(vehicle)}
-                data-testid={`delete-btn-${vehicle.id}`}
-                className="h-14 w-14 flex items-center justify-center rounded-sm bg-[#FF3333] border-[1.5px] border-black btn-brutalist hover:bg-[#e02929]"
-                aria-label="Delete vehicle"
-              >
-                <Trash2 className="w-5 h-5 text-white" />
-              </button>
-            </>
-          )}
-        </div>
+      <div className="flex gap-2">
+        <a
+          href={telHref}
+          onClick={handleCall}
+          data-testid={`call-btn-${vehicle.id}`}
+          data-phone={cleanPhone}
+          className="flex-1 inline-flex items-center justify-center gap-2 h-14 rounded-sm bg-[#16A34A] text-white font-bold text-base btn-brutalist hover:bg-[#15803d] active:scale-[0.98]"
+        >
+          <Phone className="w-5 h-5" strokeWidth={2.5} />
+          <span>Call {vehicle.phone}</span>
+        </a>
+
+        {canEdit && (
+          <>
+            <button
+              type="button"
+              onClick={() => onEdit?.(vehicle)}
+              data-testid={`edit-btn-${vehicle.id}`}
+              className="h-14 w-14 flex items-center justify-center rounded-sm bg-white border-[1.5px] border-black btn-brutalist hover:bg-gray-100"
+              aria-label="Edit vehicle"
+            >
+              <Pencil className="w-5 h-5 text-black" />
+            </button>
+            <button
+              type="button"
+              onClick={() => onDelete?.(vehicle)}
+              data-testid={`delete-btn-${vehicle.id}`}
+              className="h-14 w-14 flex items-center justify-center rounded-sm bg-[#FF3333] border-[1.5px] border-black btn-brutalist hover:bg-[#e02929]"
+              aria-label="Delete vehicle"
+            >
+              <Trash2 className="w-5 h-5 text-white" />
+            </button>
+          </>
+        )}
       </div>
     </div>
   );
