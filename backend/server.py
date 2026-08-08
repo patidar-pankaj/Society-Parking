@@ -34,6 +34,7 @@ VALID_FLATS = {f"{floor}{unit:02d}" for floor in range(1, 6) for unit in range(1
 
 MAX_FAILED_ATTEMPTS = 5
 LOCKOUT_MINUTES = 15
+MAX_PHOTO_BYTES = 700_000  # ~700 KB after client compression
 
 
 # ---------- App ----------
@@ -131,6 +132,7 @@ class VehicleCreate(BaseModel):
     flat_number: str = Field(..., min_length=1, max_length=10)
     vehicle_number: str = Field(..., min_length=2, max_length=20)
     is_guest: bool = False
+    photo: Optional[str] = None
 
 
 class VehicleUpdate(BaseModel):
@@ -138,6 +140,7 @@ class VehicleUpdate(BaseModel):
     phone: Optional[str] = None
     flat_number: Optional[str] = None
     vehicle_number: Optional[str] = None
+    photo: Optional[str] = None  # empty string clears the photo
 
 
 class Vehicle(BaseModel):
@@ -148,7 +151,18 @@ class Vehicle(BaseModel):
     vehicle_number: str
     is_guest: bool = False
     user_id: Optional[str] = None
+    photo: Optional[str] = None
     created_at: datetime
+
+
+def _validate_photo(photo: Optional[str]) -> Optional[str]:
+    if photo is None or photo == "":
+        return photo
+    if not photo.startswith("data:image/"):
+        raise HTTPException(status_code=400, detail="Photo must be an image data URL")
+    if len(photo) > MAX_PHOTO_BYTES:
+        raise HTTPException(status_code=400, detail="Photo too large; please pick a smaller image")
+    return photo
 
 
 def _serialize_vehicle(doc: dict) -> dict:
@@ -311,6 +325,7 @@ async def create_vehicle(payload: VehicleCreate, user=Depends(get_current_user))
         "vehicle_number_normalized": vplate,
         "is_guest": bool(payload.is_guest),
         "user_id": user["id"],
+        "photo": _validate_photo(payload.photo),
         "created_at": now.isoformat(),
     }
     await db.vehicles.insert_one(doc)
@@ -346,6 +361,8 @@ async def update_vehicle(vehicle_id: str, payload: VehicleUpdate, user=Depends(g
             raise HTTPException(status_code=409, detail="This vehicle number is already registered")
         updates["vehicle_number"] = new_num
         updates["vehicle_number_normalized"] = new_norm
+    if payload.photo is not None:
+        updates["photo"] = _validate_photo(payload.photo) if payload.photo else None
 
     if updates:
         await db.vehicles.update_one({"id": vehicle_id}, {"$set": updates})
@@ -376,6 +393,42 @@ async def stats():
 @api_router.get("/config/valid-flats")
 async def valid_flats():
     return {"flats": sorted(VALID_FLATS)}
+
+
+# ---------- Admin endpoints ----------
+def _require_admin(user: dict):
+    if not user.get("is_admin"):
+        raise HTTPException(status_code=403, detail="Admin access required")
+
+
+@api_router.get("/admin/users")
+async def admin_list_users(user=Depends(get_current_user)):
+    _require_admin(user)
+    docs = await db.users.find({}, {"_id": 0, "password_hash": 0}).sort("flat_number", 1).to_list(200)
+    # attach vehicle count per user
+    result = []
+    for u in docs:
+        if u.get("flat_number") == ADMIN_FLAT:
+            continue
+        count = await db.vehicles.count_documents({"user_id": u["id"]})
+        u["vehicle_count"] = count
+        result.append(u)
+    return result
+
+
+@api_router.delete("/admin/users/{user_id}", status_code=204)
+async def admin_reset_flat(user_id: str, user=Depends(get_current_user)):
+    """Reset a flat: delete the resident and all their vehicles.
+    The flat can then be re-registered by a new owner via signup."""
+    _require_admin(user)
+    target = await db.users.find_one({"id": user_id})
+    if not target:
+        raise HTTPException(status_code=404, detail="Resident not found")
+    if target.get("flat_number") == ADMIN_FLAT:
+        raise HTTPException(status_code=400, detail="Cannot reset the admin account")
+    await db.vehicles.delete_many({"user_id": user_id})
+    await db.users.delete_one({"id": user_id})
+    return None
 
 
 # ---------- Startup / seed ----------

@@ -58,6 +58,15 @@ export async function deleteVehicle(id) {
   await api.delete(`/vehicles/${id}`);
 }
 
+export async function adminListUsers() {
+  const { data } = await api.get("/admin/users");
+  return data;
+}
+
+export async function adminResetFlat(userId) {
+  await api.delete(`/admin/users/${userId}`);
+}
+
 export async function getStats() {
   const { data } = await api.get("/stats");
   return data;

@@ -29,6 +29,7 @@ import { Toaster, toast } from "sonner";
 import VehicleCard from "../components/VehicleCard";
 import VehicleForm from "../components/VehicleForm";
 import AuthDialog from "../components/AuthDialog";
+import AdminUsersPanel from "../components/AdminUsersPanel";
 import { useAuth } from "../context/AuthContext";
 import { listVehicles, deleteVehicle } from "../lib/api";
 
@@ -420,6 +421,8 @@ export default function Home() {
                       />
                     ))}
                   </div>
+
+                  <AdminUsersPanel onAfterReset={load} />
                 </div>
               ) : (
                 <div>

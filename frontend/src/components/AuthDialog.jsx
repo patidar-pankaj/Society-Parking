@@ -22,6 +22,7 @@ import {
 import { toast } from "sonner";
 import { useAuth } from "../context/AuthContext";
 import { VALID_FLATS, formatApiErrorDetail } from "../lib/api";
+import { normalizePhone } from "../lib/phone";
 
 const inputCls =
   "h-12 border-black border-[1.5px] rounded-sm bg-white text-base font-medium focus-visible:ring-0 focus-visible:border-[#002FA7]";
@@ -94,11 +95,16 @@ export const AuthDialog = ({ open, onOpenChange, defaultTab = "login" }) => {
       toast.error("Password must be at least 6 characters");
       return;
     }
+    const tenDigit = normalizePhone(su.phone);
+    if (!tenDigit) {
+      toast.error("Phone must be a 10-digit Indian mobile number");
+      return;
+    }
     setSuBusy(true);
     try {
       const user = await signup({
         owner_name: su.owner_name.trim(),
-        phone: su.phone.trim(),
+        phone: `+91 ${tenDigit.slice(0, 5)} ${tenDigit.slice(5)}`,
         flat_number: su.flat_number.trim().toUpperCase(),
         vehicle_number: su.vehicle_number.trim().toUpperCase(),
         password: su.password,
@@ -215,7 +221,8 @@ export const AuthDialog = ({ open, onOpenChange, defaultTab = "login" }) => {
                   value={su.phone}
                   onChange={upd("phone")}
                   inputMode="tel"
-                  placeholder="+91 98765 43210"
+                  maxLength={20}
+                  placeholder="10-digit mobile, e.g. 9876543210"
                   className={inputCls}
                 />
               </div>
