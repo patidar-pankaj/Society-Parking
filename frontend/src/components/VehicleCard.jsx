@@ -70,13 +70,15 @@ export const VehicleCard = ({ vehicle, canEdit, isMine, onEdit, onDelete, index 
         </div>
 
         {vehicle.photo && (
-          <img
-            src={vehicle.photo}
-            alt={`Vehicle ${vehicle.vehicle_number}`}
-            className="w-20 h-20 object-cover rounded-sm border-[1.5px] border-black shrink-0"
-            data-testid={`photo-${vehicle.id}`}
-            loading="lazy"
-          />
+          <div className="shrink-0">
+            <img
+              src={vehicle.photo}
+              alt={`Vehicle ${vehicle.vehicle_number}`}
+              className="w-24 h-[72px] object-cover rounded-sm border-[1.5px] border-black shadow-[2px_2px_0_0_#0a0a0a]"
+              data-testid={`photo-${vehicle.id}`}
+              loading="lazy"
+            />
+          </div>
         )}
       </div>
 
