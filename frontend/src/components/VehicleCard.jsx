@@ -1,20 +1,38 @@
-import { Phone, Home, User, Pencil, Trash2 } from "lucide-react";
-import { Button } from "./ui/button";
+import { Phone, Home, User, Pencil, Trash2, UserCheck } from "lucide-react";
 
-export const VehicleCard = ({ vehicle, isOwned, onEdit, onDelete, index = 0 }) => {
+export const VehicleCard = ({ vehicle, canEdit, isMine, onEdit, onDelete, index = 0 }) => {
   const cleanPhone = (vehicle.phone || "").replace(/[^\d+]/g, "");
   const telHref = `tel:${cleanPhone}`;
 
   const handleCall = (e) => {
-    // Ensure dialer opens even if the default anchor navigation is blocked
-    // by preview iframes, service workers, or handlers on parent elements.
     e.stopPropagation();
     try {
       window.location.href = telHref;
     } catch (_) {
-      // fall back to default anchor behaviour
+      // fallback: default anchor behavior
     }
   };
+
+  const badges = (
+    <>
+      {vehicle.is_guest && (
+        <span
+          className="text-[0.6rem] tracking-[0.2em] font-bold uppercase bg-[#FFD700] text-black px-2 py-1 rounded-sm border-[1.5px] border-black"
+          data-testid={`guest-badge-${vehicle.id}`}
+        >
+          Guest
+        </span>
+      )}
+      {isMine && (
+        <span
+          className="text-[0.6rem] tracking-[0.2em] font-bold uppercase bg-[#002FA7] text-white px-2 py-1 rounded-sm"
+          data-testid={`owned-badge-${vehicle.id}`}
+        >
+          You
+        </span>
+      )}
+    </>
+  );
 
   return (
     <div
@@ -22,33 +40,52 @@ export const VehicleCard = ({ vehicle, isOwned, onEdit, onDelete, index = 0 }) =
       style={{ animationDelay: `${Math.min(index, 8) * 40}ms` }}
       data-testid={`vehicle-card-${vehicle.id}`}
     >
-      <div className="flex items-start justify-between gap-3 mb-3">
-        <div className="plate-badge text-base" data-testid={`plate-${vehicle.id}`}>
-          {vehicle.vehicle_number}
-        </div>
-        {isOwned && (
-          <span
-            className="text-[0.6rem] tracking-[0.2em] font-bold uppercase bg-[#002FA7] text-white px-2 py-1 rounded-sm"
-            data-testid={`owned-badge-${vehicle.id}`}
-          >
-            You
-          </span>
-        )}
-      </div>
+      <div className="flex items-stretch gap-3 mb-4">
+        <div className="flex-1 min-w-0 flex flex-col justify-between">
+          <div className="flex items-center gap-2 flex-wrap">
+            <div className="plate-badge text-base" data-testid={`plate-${vehicle.id}`}>
+              {vehicle.vehicle_number}
+            </div>
+            {badges}
+          </div>
 
-      <div className="space-y-1.5 mb-4">
-        <div className="flex items-center gap-2 text-sm">
-          <User className="w-4 h-4 text-gray-500" />
-          <span className="font-semibold text-black" data-testid={`owner-${vehicle.id}`}>
-            {vehicle.owner_name}
-          </span>
+          <div className="space-y-1.5 mt-3">
+            <div className="flex items-center gap-2 text-sm">
+              {vehicle.is_guest ? (
+                <UserCheck className="w-4 h-4 text-gray-500 shrink-0" />
+              ) : (
+                <User className="w-4 h-4 text-gray-500 shrink-0" />
+              )}
+              <span
+                className="font-semibold text-black truncate"
+                data-testid={`owner-${vehicle.id}`}
+              >
+                {vehicle.owner_name}
+              </span>
+            </div>
+            <div className="flex items-center gap-2 text-sm">
+              <Home className="w-4 h-4 text-gray-500 shrink-0" />
+              <span
+                className="font-medium text-gray-700 truncate"
+                data-testid={`flat-${vehicle.id}`}
+              >
+                {vehicle.is_guest ? "Visiting " : ""}Flat {vehicle.flat_number}
+              </span>
+            </div>
+          </div>
         </div>
-        <div className="flex items-center gap-2 text-sm">
-          <Home className="w-4 h-4 text-gray-500" />
-          <span className="font-medium text-gray-700" data-testid={`flat-${vehicle.id}`}>
-            Flat {vehicle.flat_number}
-          </span>
-        </div>
+
+        {vehicle.photo && (
+          <div className="shrink-0 w-28">
+            <img
+              src={vehicle.photo}
+              alt={`Vehicle ${vehicle.vehicle_number}`}
+              className="w-28 h-full min-h-[88px] object-cover rounded-sm border-[1.5px] border-black shadow-[2px_2px_0_0_#0a0a0a]"
+              data-testid={`photo-${vehicle.id}`}
+              loading="lazy"
+            />
+          </div>
+        )}
       </div>
 
       <div className="flex gap-2">
@@ -63,7 +100,7 @@ export const VehicleCard = ({ vehicle, isOwned, onEdit, onDelete, index = 0 }) =
           <span>Call {vehicle.phone}</span>
         </a>
 
-        {isOwned && (
+        {canEdit && (
           <>
             <button
               type="button"

@@ -1,16 +1,36 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { Input } from "./ui/input";
 import { Label } from "./ui/label";
 import { Button } from "./ui/button";
+import { Camera, X as XIcon } from "lucide-react";
 import { toast } from "sonner";
-import { createVehicle, updateVehicle } from "../lib/api";
+import { createVehicle, updateVehicle, formatApiErrorDetail } from "../lib/api";
+import { normalizePhone } from "../lib/phone";
+import { compressImage } from "../lib/image";
+import { useAuth } from "../context/AuthContext";
 
-const EMPTY = { owner_name: "", phone: "", flat_number: "", vehicle_number: "" };
+const inputCls =
+  "h-12 border-black border-[1.5px] rounded-sm bg-white text-base font-medium focus-visible:ring-0 focus-visible:border-[#002FA7]";
+const plateCls =
+  "h-14 border-black border-[1.5px] rounded-sm bg-[#fef7cd] font-mono-plate text-lg font-bold uppercase focus-visible:ring-0 focus-visible:border-[#002FA7]";
 
-export const VehicleForm = ({ initial, onSuccess, onCancel }) => {
-  const [form, setForm] = useState(EMPTY);
+const emptyFor = (user, mode) => ({
+  owner_name: mode === "guest" ? "" : user?.owner_name || "",
+  phone: mode === "guest" ? "" : user?.phone || "",
+  flat_number: user?.flat_number || "",
+  vehicle_number: "",
+  photo: null,
+});
+
+export const VehicleForm = ({ initial, mode = "member", onSuccess, onCancel }) => {
+  const { user } = useAuth();
+  const [form, setForm] = useState(emptyFor(user, mode));
+  const [phoneError, setPhoneError] = useState("");
   const [saving, setSaving] = useState(false);
+  const [photoBusy, setPhotoBusy] = useState(false);
+  const fileRef = useRef(null);
   const isEdit = Boolean(initial?.id);
+  const isGuest = isEdit ? Boolean(initial?.is_guest) : mode === "guest";
 
   useEffect(() => {
     if (initial) {
@@ -19,87 +39,155 @@ export const VehicleForm = ({ initial, onSuccess, onCancel }) => {
         phone: initial.phone || "",
         flat_number: initial.flat_number || "",
         vehicle_number: initial.vehicle_number || "",
+        photo: initial.photo || null,
       });
     } else {
-      setForm(EMPTY);
+      setForm(emptyFor(user, mode));
     }
-  }, [initial]);
+    setPhoneError("");
+  }, [initial, user, mode]);
 
   const update = (key) => (e) => {
     const raw = e.target.value;
     const val =
       key === "vehicle_number" || key === "flat_number" ? raw.toUpperCase() : raw;
     setForm((f) => ({ ...f, [key]: val }));
+    if (key === "phone") setPhoneError("");
   };
+
+  const onPhoneBlur = () => {
+    if (!form.phone) return;
+    if (!normalizePhone(form.phone)) {
+      setPhoneError("Enter a valid 10-digit Indian mobile number");
+    }
+  };
+
+  const onPickPhoto = async (e) => {
+    const file = e.target.files?.[0];
+    e.target.value = "";
+    if (!file) return;
+    setPhotoBusy(true);
+    try {
+      const dataUrl = await compressImage(file, { maxWidth: 900, quality: 0.72 });
+      if (dataUrl.length > 700_000) {
+        toast.error("Image is too large. Please try a smaller photo.");
+        return;
+      }
+      setForm((f) => ({ ...f, photo: dataUrl }));
+    } catch (err) {
+      toast.error(err?.message || "Could not process image");
+    } finally {
+      setPhotoBusy(false);
+    }
+  };
+
+  const clearPhoto = () => setForm((f) => ({ ...f, photo: "" }));
 
   const submit = async (e) => {
     e.preventDefault();
-    if (!form.owner_name.trim() || !form.phone.trim() || !form.flat_number.trim() || !form.vehicle_number.trim()) {
+    if (
+      !form.owner_name.trim() ||
+      !form.phone.trim() ||
+      !form.flat_number.trim() ||
+      !form.vehicle_number.trim()
+    ) {
       toast.error("Please fill all fields");
       return;
     }
+    const tenDigit = normalizePhone(form.phone);
+    if (!tenDigit) {
+      setPhoneError("Enter a valid 10-digit Indian mobile number");
+      toast.error("Phone must be a 10-digit Indian mobile number");
+      return;
+    }
+    const payload = {
+      owner_name: form.owner_name.trim(),
+      phone: `+91 ${tenDigit.slice(0, 5)} ${tenDigit.slice(5)}`,
+      flat_number: form.flat_number.trim().toUpperCase(),
+      vehicle_number: form.vehicle_number.trim().toUpperCase(),
+    };
+    if (form.photo !== null) {
+      payload.photo = form.photo || "";
+    }
+
     setSaving(true);
     try {
       if (isEdit) {
-        const updated = await updateVehicle(initial.id, form);
+        const updated = await updateVehicle(initial.id, payload);
         toast.success("Vehicle updated");
         onSuccess?.(updated);
       } else {
-        const created = await createVehicle(form);
-        toast.success("Vehicle added");
-        // Save ownership locally so user can identify their entries
-        const owned = JSON.parse(localStorage.getItem("ssp_owned") || "[]");
-        if (!owned.includes(created.id)) {
-          owned.push(created.id);
-          localStorage.setItem("ssp_owned", JSON.stringify(owned));
-        }
+        const created = await createVehicle({ ...payload, is_guest: mode === "guest" });
+        toast.success(mode === "guest" ? "Guest vehicle added" : "Vehicle added");
         onSuccess?.(created);
       }
     } catch (err) {
-      const msg = err?.response?.data?.detail || "Something went wrong";
-      toast.error(msg);
+      toast.error(formatApiErrorDetail(err?.response?.data?.detail) || "Something went wrong");
     } finally {
       setSaving(false);
     }
   };
 
+  const flatLocked = !isEdit && mode === "member" && !user?.is_admin;
+
   return (
     <form onSubmit={submit} className="space-y-5" data-testid="vehicle-form">
       <div className="space-y-2">
-        <Label htmlFor="owner_name" className="label-eyebrow">Owner Name</Label>
+        <Label htmlFor="owner_name" className="label-eyebrow">
+          {isGuest ? "Guest Name" : "Owner Name"}
+        </Label>
         <Input
           id="owner_name"
           data-testid="input-owner-name"
           value={form.owner_name}
           onChange={update("owner_name")}
-          placeholder="e.g. Rakesh Sharma"
-          className="h-12 border-black border-[1.5px] rounded-sm bg-white text-base font-medium focus-visible:ring-0 focus-visible:border-[#002FA7]"
+          placeholder={isGuest ? "e.g. Anil (visitor)" : "e.g. Rakesh Sharma"}
+          className={inputCls}
         />
       </div>
 
       <div className="space-y-2">
-        <Label htmlFor="phone" className="label-eyebrow">Phone Number</Label>
+        <Label htmlFor="phone" className="label-eyebrow">
+          {isGuest ? "Guest Phone" : "Phone Number"}
+        </Label>
         <Input
           id="phone"
           data-testid="input-phone"
           value={form.phone}
           onChange={update("phone")}
+          onBlur={onPhoneBlur}
           inputMode="tel"
-          placeholder="e.g. +91 98765 43210"
-          className="h-12 border-black border-[1.5px] rounded-sm bg-white text-base font-medium focus-visible:ring-0 focus-visible:border-[#002FA7]"
+          maxLength={20}
+          placeholder="10-digit mobile, e.g. 9876543210"
+          className={inputCls + (phoneError ? " border-[#FF3333]" : "")}
         />
+        {phoneError && (
+          <p className="text-xs font-semibold text-[#FF3333]" data-testid="phone-error">
+            {phoneError}
+          </p>
+        )}
       </div>
 
       <div className="space-y-2">
-        <Label htmlFor="flat_number" className="label-eyebrow">Flat / Apartment</Label>
+        <Label htmlFor="flat_number" className="label-eyebrow">
+          {isGuest ? "Visiting Flat" : "Flat / Apartment"}
+        </Label>
         <Input
           id="flat_number"
           data-testid="input-flat-number"
           value={form.flat_number}
           onChange={update("flat_number")}
-          placeholder="e.g. B-402"
-          className="h-12 border-black border-[1.5px] rounded-sm bg-white text-base font-semibold uppercase tracking-wide focus-visible:ring-0 focus-visible:border-[#002FA7]"
+          placeholder="e.g. 402"
+          disabled={flatLocked}
+          className={
+            inputCls +
+            " font-mono-plate uppercase tracking-wide " +
+            (flatLocked ? "bg-gray-100 text-gray-500 cursor-not-allowed" : "")
+          }
         />
+        {flatLocked && (
+          <p className="text-xs text-gray-500">Members can only add vehicles for their own flat.</p>
+        )}
       </div>
 
       <div className="space-y-2">
@@ -110,8 +198,52 @@ export const VehicleForm = ({ initial, onSuccess, onCancel }) => {
           value={form.vehicle_number}
           onChange={update("vehicle_number")}
           placeholder="MH 01 AB 1234"
-          className="h-14 border-black border-[1.5px] rounded-sm bg-[#fef7cd] font-mono-plate text-lg font-bold uppercase focus-visible:ring-0 focus-visible:border-[#002FA7]"
+          className={plateCls}
         />
+      </div>
+
+      <div className="space-y-2">
+        <Label className="label-eyebrow">Vehicle Photo <span className="opacity-60">(optional)</span></Label>
+        <input
+          ref={fileRef}
+          type="file"
+          accept="image/*"
+          onChange={onPickPhoto}
+          className="hidden"
+          data-testid="input-photo"
+        />
+        {form.photo ? (
+          <div className="relative border-[1.5px] border-black rounded-sm overflow-hidden bg-white">
+            <img
+              src={form.photo}
+              alt="Vehicle"
+              className="w-full h-40 object-cover"
+              data-testid="photo-preview"
+            />
+            <button
+              type="button"
+              onClick={clearPhoto}
+              data-testid="remove-photo-btn"
+              className="absolute top-2 right-2 h-8 w-8 flex items-center justify-center rounded-sm bg-[#FF3333] text-white border-[1.5px] border-black btn-brutalist"
+              aria-label="Remove photo"
+            >
+              <XIcon className="w-4 h-4" />
+            </button>
+          </div>
+        ) : (
+          <button
+            type="button"
+            onClick={() => fileRef.current?.click()}
+            disabled={photoBusy}
+            data-testid="pick-photo-btn"
+            className="w-full h-24 flex flex-col items-center justify-center gap-1 rounded-sm border-[1.5px] border-dashed border-black bg-white hover:bg-gray-50 transition-colors"
+          >
+            <Camera className="w-6 h-6 text-black" />
+            <span className="label-eyebrow">
+              {photoBusy ? "Processing..." : "Add photo"}
+            </span>
+          </button>
+        )}
       </div>
 
       <div className="flex gap-3 pt-2">
@@ -132,7 +264,7 @@ export const VehicleForm = ({ initial, onSuccess, onCancel }) => {
           data-testid="submit-vehicle-btn"
           className="flex-1 h-12 rounded-sm bg-[#002FA7] text-white hover:bg-[#0033b3] btn-brutalist font-semibold"
         >
-          {saving ? "Saving..." : isEdit ? "Update" : "Add Vehicle"}
+          {saving ? "Saving..." : isEdit ? "Update" : isGuest ? "Add Guest" : "Add Vehicle"}
         </Button>
       </div>
     </form>
