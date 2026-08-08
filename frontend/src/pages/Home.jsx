@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
-import { Search, Plus, Car, X, MapPin } from "lucide-react";
+import { Search, Plus, Car, X, MapPin, LogIn, LogOut, ShieldCheck, UserPlus } from "lucide-react";
 import { Input } from "../components/ui/input";
 import { Button } from "../components/ui/button";
 import {
@@ -19,22 +19,30 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "../components/ui/alert-dialog";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "../components/ui/dropdown-menu";
 import { Toaster, toast } from "sonner";
 import VehicleCard from "../components/VehicleCard";
 import VehicleForm from "../components/VehicleForm";
+import AuthDialog from "../components/AuthDialog";
+import { useAuth } from "../context/AuthContext";
 import { listVehicles, deleteVehicle } from "../lib/api";
 
-const OWNED_KEY = "ssp_owned";
-
 export default function Home() {
+  const { user, logout, loading: authLoading } = useAuth();
   const [query, setQuery] = useState("");
   const [vehicles, setVehicles] = useState([]);
   const [loading, setLoading] = useState(true);
-  const [tab, setTab] = useState("search"); // "search" | "directory" | "mine"
-  const [addOpen, setAddOpen] = useState(false);
+  const [tab, setTab] = useState("search");
+  const [addMode, setAddMode] = useState(null); // "member" | "guest" | null
   const [editing, setEditing] = useState(null);
   const [confirmDel, setConfirmDel] = useState(null);
-  const [ownedIds, setOwnedIds] = useState([]);
+  const [authOpen, setAuthOpen] = useState(false);
+  const [authDefaultTab, setAuthDefaultTab] = useState("login");
 
   const load = async () => {
     setLoading(true);
@@ -50,8 +58,13 @@ export default function Home() {
 
   useEffect(() => {
     load();
-    setOwnedIds(JSON.parse(localStorage.getItem(OWNED_KEY) || "[]"));
   }, []);
+
+  useEffect(() => {
+    // refresh directory on login/logout so ownership badges update
+    if (!authLoading) load();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [user?.id, authLoading]);
 
   const normalized = query.replace(/[^A-Za-z0-9]/g, "").toUpperCase();
 
@@ -63,18 +76,24 @@ export default function Home() {
   }, [vehicles, normalized]);
 
   const myVehicles = useMemo(
-    () => vehicles.filter((v) => ownedIds.includes(v.id)),
-    [vehicles, ownedIds]
+    () => (user ? vehicles.filter((v) => v.user_id === user.id) : []),
+    [vehicles, user]
   );
 
-  const handleAdded = (v) => {
-    setAddOpen(false);
-    setEditing(null);
-    setOwnedIds(JSON.parse(localStorage.getItem(OWNED_KEY) || "[]"));
-    load();
+  const isMine = (v) => user && v.user_id === user.id;
+  const canEdit = (v) => Boolean(user && (v.user_id === user.id || user.is_admin));
+
+  const openAdd = (mode) => {
+    if (!user) {
+      setAuthDefaultTab("signup");
+      setAuthOpen(true);
+      return;
+    }
+    setAddMode(mode);
   };
 
-  const handleUpdated = (v) => {
+  const handleSaved = () => {
+    setAddMode(null);
     setEditing(null);
     load();
   };
@@ -83,24 +102,20 @@ export default function Home() {
     if (!confirmDel) return;
     try {
       await deleteVehicle(confirmDel.id);
-      const owned = JSON.parse(localStorage.getItem(OWNED_KEY) || "[]").filter(
-        (id) => id !== confirmDel.id
-      );
-      localStorage.setItem(OWNED_KEY, JSON.stringify(owned));
-      setOwnedIds(owned);
       toast.success("Vehicle removed");
       setConfirmDel(null);
       load();
     } catch (e) {
-      toast.error("Could not delete");
+      toast.error(e?.response?.data?.detail || "Could not delete");
     }
   };
+
+  const dialogOpen = Boolean(addMode) || Boolean(editing);
 
   return (
     <div className="min-h-screen bg-[#efeae1] noise-bg" data-testid="app-root">
       <Toaster position="top-center" richColors />
 
-      {/* App container - mobile first, capped at md */}
       <div className="w-full max-w-md mx-auto min-h-screen bg-[#efeae1] pb-28 relative z-10">
         {/* Header */}
         <header className="sticky top-0 z-30 backdrop-blur-xl bg-[#efeae1]/85 border-b-[1.5px] border-black">
@@ -117,23 +132,89 @@ export default function Home() {
                   </div>
                 </div>
               </div>
-              <Button
-                onClick={() => setAddOpen(true)}
-                data-testid="open-add-vehicle-btn"
-                className="h-10 rounded-sm bg-[#002FA7] hover:bg-[#0033b3] text-white btn-brutalist font-semibold px-4"
-              >
-                <Plus className="w-4 h-4 mr-1" strokeWidth={2.5} />
-                Add
-              </Button>
+
+              {user ? (
+                <DropdownMenu>
+                  <DropdownMenuTrigger asChild>
+                    <button
+                      data-testid="user-chip"
+                      className="h-10 rounded-sm border-[1.5px] border-black bg-white btn-brutalist px-3 flex items-center gap-2 hover:bg-gray-50"
+                    >
+                      {user.is_admin ? (
+                        <ShieldCheck className="w-4 h-4 text-[#002FA7]" strokeWidth={2.5} />
+                      ) : (
+                        <div className="w-2 h-2 rounded-full bg-[#16A34A]" />
+                      )}
+                      <span className="font-mono-plate font-bold text-sm">
+                        {user.is_admin ? "ADMIN" : user.flat_number}
+                      </span>
+                    </button>
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent
+                    align="end"
+                    className="rounded-sm border-[1.5px] border-black w-48"
+                  >
+                    <DropdownMenuItem
+                      data-testid="menu-add-mine"
+                      onClick={() => openAdd("member")}
+                      className="cursor-pointer font-medium"
+                    >
+                      <Plus className="w-4 h-4 mr-2" /> Add my vehicle
+                    </DropdownMenuItem>
+                    <DropdownMenuItem
+                      data-testid="menu-add-guest"
+                      onClick={() => openAdd("guest")}
+                      className="cursor-pointer font-medium"
+                    >
+                      <UserPlus className="w-4 h-4 mr-2" /> Add guest vehicle
+                    </DropdownMenuItem>
+                    <DropdownMenuItem
+                      data-testid="menu-logout"
+                      onClick={() => {
+                        logout();
+                        toast.success("Signed out");
+                      }}
+                      className="cursor-pointer font-medium text-[#FF3333] focus:text-[#FF3333]"
+                    >
+                      <LogOut className="w-4 h-4 mr-2" /> Sign out
+                    </DropdownMenuItem>
+                  </DropdownMenuContent>
+                </DropdownMenu>
+              ) : (
+                <div className="flex gap-2">
+                  <Button
+                    onClick={() => {
+                      setAuthDefaultTab("login");
+                      setAuthOpen(true);
+                    }}
+                    data-testid="open-signin-btn"
+                    variant="outline"
+                    className="h-10 rounded-sm border-black border-[1.5px] bg-white text-black hover:bg-gray-100 btn-brutalist font-semibold px-3"
+                  >
+                    <LogIn className="w-4 h-4 mr-1" strokeWidth={2.5} />
+                    Sign in
+                  </Button>
+                  <Button
+                    onClick={() => {
+                      setAuthDefaultTab("signup");
+                      setAuthOpen(true);
+                    }}
+                    data-testid="open-signup-btn"
+                    className="h-10 rounded-sm bg-[#002FA7] hover:bg-[#0033b3] text-white btn-brutalist font-semibold px-3"
+                  >
+                    <Plus className="w-4 h-4 mr-1" strokeWidth={2.5} />
+                    Sign up
+                  </Button>
+                </div>
+              )}
             </div>
           </div>
 
-          {/* Tab bar */}
           <div className="flex border-t-[1.5px] border-black">
             {[
               { id: "search", label: "Search" },
               { id: "directory", label: "Directory" },
-              { id: "mine", label: "My Cars" },
+              { id: "mine", label: user?.is_admin ? "Admin" : "My Cars" },
             ].map((t) => (
               <button
                 key={t.id}
@@ -151,7 +232,6 @@ export default function Home() {
           </div>
         </header>
 
-        {/* Content */}
         <main className="px-5 pt-6">
           {tab === "search" && (
             <section data-testid="search-section">
@@ -200,7 +280,7 @@ export default function Home() {
                     </li>
                     <li className="flex gap-3">
                       <span className="font-heading font-black text-[#002FA7]">03</span>
-                      <span>Add your own car so neighbours can reach you too.</span>
+                      <span>{user ? "Add your own or a guest's car anytime." : "Sign up to add your car or a guest's."}</span>
                     </li>
                   </ol>
                 </div>
@@ -227,7 +307,8 @@ export default function Home() {
                           key={v.id}
                           vehicle={v}
                           index={i}
-                          isOwned={ownedIds.includes(v.id)}
+                          isMine={isMine(v)}
+                          canEdit={canEdit(v)}
                           onEdit={setEditing}
                           onDelete={setConfirmDel}
                         />
@@ -255,13 +336,16 @@ export default function Home() {
               ) : vehicles.length === 0 ? (
                 <div className="card-flat p-6 text-center" data-testid="directory-empty">
                   <div className="font-heading font-black text-xl mb-1">Directory is empty</div>
-                  <p className="text-sm text-gray-600 mb-4">Be the first to add your vehicle.</p>
+                  <p className="text-sm text-gray-600 mb-4">Be the first to sign up and add your vehicle.</p>
                   <Button
-                    onClick={() => setAddOpen(true)}
-                    data-testid="empty-add-btn"
+                    onClick={() => {
+                      setAuthDefaultTab("signup");
+                      setAuthOpen(true);
+                    }}
+                    data-testid="empty-signup-btn"
                     className="rounded-sm bg-[#002FA7] hover:bg-[#0033b3] text-white btn-brutalist"
                   >
-                    <Plus className="w-4 h-4 mr-1" /> Add Vehicle
+                    <UserPlus className="w-4 h-4 mr-1" /> Sign up
                   </Button>
                 </div>
               ) : (
@@ -271,7 +355,8 @@ export default function Home() {
                       key={v.id}
                       vehicle={v}
                       index={i}
-                      isOwned={ownedIds.includes(v.id)}
+                      isMine={isMine(v)}
+                      canEdit={canEdit(v)}
                       onEdit={setEditing}
                       onDelete={setConfirmDel}
                     />
@@ -283,78 +368,155 @@ export default function Home() {
 
           {tab === "mine" && (
             <section data-testid="mine-section">
-              <div className="label-eyebrow mb-2">My Vehicles</div>
-              <h2 className="font-heading text-3xl font-black leading-tight mb-6">
-                Cars you added
-              </h2>
-
-              {myVehicles.length === 0 ? (
-                <div className="card-flat p-6 text-center" data-testid="mine-empty">
-                  <div className="font-heading font-black text-xl mb-1">Nothing here yet</div>
+              {!user ? (
+                <div className="card-flat p-6 text-center" data-testid="mine-locked">
+                  <LogIn className="w-8 h-8 mx-auto mb-3 text-gray-500" />
+                  <div className="font-heading font-black text-xl mb-1">Sign in required</div>
                   <p className="text-sm text-gray-600 mb-4">
-                    Add your car so neighbours can reach you when you&apos;re blocking someone.
+                    Sign in to manage your vehicles, or register your flat if it&apos;s your first time.
                   </p>
-                  <Button
-                    onClick={() => setAddOpen(true)}
-                    data-testid="mine-add-btn"
-                    className="rounded-sm bg-[#002FA7] hover:bg-[#0033b3] text-white btn-brutalist"
-                  >
-                    <Plus className="w-4 h-4 mr-1" /> Add My Vehicle
-                  </Button>
+                  <div className="flex gap-2 justify-center">
+                    <Button
+                      onClick={() => {
+                        setAuthDefaultTab("login");
+                        setAuthOpen(true);
+                      }}
+                      data-testid="mine-signin-btn"
+                      variant="outline"
+                      className="rounded-sm border-black border-[1.5px] bg-white btn-brutalist"
+                    >
+                      Sign in
+                    </Button>
+                    <Button
+                      onClick={() => {
+                        setAuthDefaultTab("signup");
+                        setAuthOpen(true);
+                      }}
+                      data-testid="mine-signup-btn"
+                      className="rounded-sm bg-[#002FA7] hover:bg-[#0033b3] text-white btn-brutalist"
+                    >
+                      Sign up
+                    </Button>
+                  </div>
+                </div>
+              ) : user.is_admin ? (
+                <div>
+                  <div className="label-eyebrow mb-2 flex items-center gap-2">
+                    <ShieldCheck className="w-3 h-3" /> Admin panel
+                  </div>
+                  <h2 className="font-heading text-3xl font-black leading-tight mb-6">
+                    Manage every vehicle
+                  </h2>
+                  <div className="space-y-3 stagger">
+                    {vehicles.map((v, i) => (
+                      <VehicleCard
+                        key={v.id}
+                        vehicle={v}
+                        index={i}
+                        isMine={false}
+                        canEdit
+                        onEdit={setEditing}
+                        onDelete={setConfirmDel}
+                      />
+                    ))}
+                  </div>
                 </div>
               ) : (
-                <div className="space-y-3 stagger">
-                  {myVehicles.map((v, i) => (
-                    <VehicleCard
-                      key={v.id}
-                      vehicle={v}
-                      index={i}
-                      isOwned
-                      onEdit={setEditing}
-                      onDelete={setConfirmDel}
-                    />
-                  ))}
+                <div>
+                  <div className="label-eyebrow mb-2">Flat {user.flat_number}</div>
+                  <h2 className="font-heading text-3xl font-black leading-tight mb-6">
+                    My vehicles
+                  </h2>
+                  <div className="flex gap-2 mb-4">
+                    <Button
+                      onClick={() => openAdd("member")}
+                      data-testid="add-my-vehicle-btn"
+                      className="flex-1 h-11 rounded-sm bg-[#002FA7] hover:bg-[#0033b3] text-white btn-brutalist"
+                    >
+                      <Plus className="w-4 h-4 mr-1" /> My car
+                    </Button>
+                    <Button
+                      onClick={() => openAdd("guest")}
+                      data-testid="add-guest-vehicle-btn"
+                      variant="outline"
+                      className="flex-1 h-11 rounded-sm border-black border-[1.5px] bg-white btn-brutalist"
+                    >
+                      <UserPlus className="w-4 h-4 mr-1" /> Guest
+                    </Button>
+                  </div>
+
+                  {myVehicles.length === 0 ? (
+                    <div className="card-flat p-6 text-center" data-testid="mine-empty">
+                      <div className="font-heading font-black text-xl mb-1">Nothing here yet</div>
+                      <p className="text-sm text-gray-600">
+                        Add your first vehicle so neighbours can reach you.
+                      </p>
+                    </div>
+                  ) : (
+                    <div className="space-y-3 stagger">
+                      {myVehicles.map((v, i) => (
+                        <VehicleCard
+                          key={v.id}
+                          vehicle={v}
+                          index={i}
+                          isMine
+                          canEdit
+                          onEdit={setEditing}
+                          onDelete={setConfirmDel}
+                        />
+                      ))}
+                    </div>
+                  )}
                 </div>
               )}
             </section>
           )}
         </main>
 
-        {/* Footer signature */}
         <footer className="px-5 py-6 mt-8 text-center">
           <div className="label-eyebrow">Shiv Sampada · Parking Directory</div>
         </footer>
       </div>
 
-      {/* Add / Edit Dialog */}
+      {/* Auth dialog */}
+      <AuthDialog open={authOpen} onOpenChange={setAuthOpen} defaultTab={authDefaultTab} />
+
+      {/* Vehicle add / edit */}
       <Dialog
-        open={addOpen || Boolean(editing)}
+        open={dialogOpen}
         onOpenChange={(open) => {
           if (!open) {
-            setAddOpen(false);
+            setAddMode(null);
             setEditing(null);
           }
         }}
       >
         <DialogContent
           data-testid="vehicle-dialog"
-          className="max-w-md rounded-sm border-[1.5px] border-black bg-white p-6"
+          className="max-w-md rounded-sm border-[1.5px] border-black bg-white p-6 max-h-[92vh] overflow-y-auto"
         >
           <DialogHeader>
             <DialogTitle className="font-heading text-2xl font-black">
-              {editing ? "Edit Vehicle" : "Add Your Vehicle"}
+              {editing
+                ? "Edit Vehicle"
+                : addMode === "guest"
+                  ? "Add Guest Vehicle"
+                  : "Add My Vehicle"}
             </DialogTitle>
             <DialogDescription className="text-sm text-gray-600">
               {editing
-                ? "Update your contact and vehicle details."
-                : "Neighbours will use this to reach you when you're parked in."}
+                ? "Update the contact and vehicle details."
+                : addMode === "guest"
+                  ? "For visitors parked in the society. You'll own this entry."
+                  : "Neighbours will use this to reach you when you're parked in."}
             </DialogDescription>
           </DialogHeader>
           <VehicleForm
             initial={editing}
-            onSuccess={editing ? handleUpdated : handleAdded}
+            mode={editing ? (editing.is_guest ? "guest" : "member") : addMode || "member"}
+            onSuccess={handleSaved}
             onCancel={() => {
-              setAddOpen(false);
+              setAddMode(null);
               setEditing(null);
             }}
           />
@@ -379,7 +541,10 @@ export default function Home() {
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogCancel data-testid="cancel-delete-btn" className="rounded-sm border-[1.5px] border-black">
+            <AlertDialogCancel
+              data-testid="cancel-delete-btn"
+              className="rounded-sm border-[1.5px] border-black"
+            >
               Cancel
             </AlertDialogCancel>
             <AlertDialogAction

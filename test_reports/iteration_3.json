@@ -1,0 +1,44 @@
+{
+  "summary": "Full backend + frontend verification for Shiv Sampada Parking auth & vehicles. 20/20 pytest backend tests pass (signup validation incl. valid-flats/duplicate/plate variants, login incl. wrong-password + brute-force lockout, admin login, /me, vehicles public list + search, protected create with ownership rules, guest flag, PUT/DELETE ownership + admin overrides). Playwright UI walkthrough on mobile viewport confirms: public home, search + tel: call work without login, signup dialog registers + auto-logins (chip shows flat), user menu has Add-mine/Add-guest/Sign out, guest badge renders yellow, logout clears ssp_token, admin (ADMIN/shivadmin2026) shows ADMIN chip + Admin tab + edit/delete on every card (14/14), duplicate-flat signup surfaces toast and keeps dialog open.",
+  "backend_issues": {
+    "critical": [],
+    "minor": [
+      {"endpoint": "/api/auth/login", "issue": "Brute-force lockout counter is stored per (client_ip:flat) but the app is behind a load balancer that surfaces multiple ingress IPs (observed 10.49.136.2 and 10.49.136.6). Each pod-side IP maintains its own counter, so an attacker distributed across ingress hops needs ~2x the attempts to trip the 5-fail threshold. Lockout still triggers within ~10 attempts but the effective threshold is diluted. Consider using X-Forwarded-For (first hop) or the flat_number alone as the identifier."}
+    ]
+  },
+  "frontend_issues": {
+    "ui_bugs": [
+      {"component": "AuthDialog", "issue": "`defaultTab` prop is only read on first mount via `useState(defaultTab)`; subsequent parent changes (Sign up button after Sign in was default) don't switch the internal tab. Repro: on cold load, click 'Sign up' in header — dialog opens on Sign In tab instead of Sign Up. Fix: add useEffect(() => setTab(defaultTab), [defaultTab, open]).", "selector": "[data-testid=\"auth-dialog\"]", "priority": "MEDIUM"}
+    ],
+    "integration_issues": [],
+    "design_issues": []
+  },
+  "test_report_links": [
+    "/app/backend/tests/backend_test.py",
+    "/app/test_reports/pytest/pytest_results.xml"
+  ],
+  "action_items": [
+    "Fix AuthDialog defaultTab syncing so the Sign Up header button always lands on the Sign Up tab (add useEffect to sync tab state with defaultTab/open).",
+    "(Optional) Harden brute-force lockout keying so multi-pod ingress can't dilute the 5-fail threshold — use flat_number-only key or trusted forwarded IP."
+  ],
+  "critical_code_review_comments": [
+    "AuthDialog: defaultTab prop is captured only on first mount — leads to wrong initial tab on subsequent opens.",
+    "server.py brute-force identifier `f'{request.client.host}:{flat}'` is not robust behind a k8s ingress with multiple front pods (2 IPs seen). Consider `flat` alone or a forwarded-for header.",
+    "server.py uses deprecated @app.on_event('startup'/'shutdown'); FastAPI recommends lifespan handlers. Non-blocking but worth updating.",
+    "login_attempts collection is not TTL-indexed; stale entries accumulate. Add TTL on `updated_at` (e.g., 1 hour) to auto-clean.",
+    "server.py file is a single 431-line module — acceptable but could be split into auth/vehicles routers as it grows.",
+    "VehicleUpdate does not validate flat_number against VALID_FLATS on PUT — a member (or admin) can change a vehicle's flat_number to anything, e.g., '999'. Consider validating on update too.",
+    "Signup uses `flat_number.strip().upper()` which is fine, but nothing bounds MongoDB unique-index race on the vehicle_number if two signups happen simultaneously — the second one will bubble up a raw DuplicateKeyError instead of a clean 409. Consider try/except on IntegrityError."
+  ],
+  "updated_files": [
+    "/app/backend/tests/backend_test.py (created)",
+    "/app/test_reports/pytest/pytest_results.xml (generated)"
+  ],
+  "success_rate": {"backend": "100% (20/20)", "frontend": "~95% (1 medium tab-init bug)"},
+  "test_credentials": "Admin: ADMIN / shivadmin2026. Test resident registered by tests: flat 108 (UI signup) and several fresh flats picked at runtime by backend fixtures.",
+  "seed_data_creation": "Backend fixture picks two fresh flats each run via 201/409 probing to avoid collisions. UI test registered flat 108 with a random plate.",
+  "retest_needed": true,
+  "main_agent_can_self_test": true,
+  "context_for_next_testing_agent": "Backend regression suite in /app/backend/tests/backend_test.py (run with `python -m pytest backend/tests/backend_test.py -n 0`). It ignores the ini's -n 2 --dist loadscope because tests share a module-scoped ctx fixture. If flat 108 needs to be freed between runs, delete users with `flat_number != 'ADMIN'` and vehicles collection. login_attempts may need clearing after brute-force test to avoid a 15-min stale lockout affecting reruns. AuthDialog wrong-tab bug is a small effect() fix — retest by clicking Sign up on cold load and verifying signup tab is active.",
+  "rca of the issue": "AuthDialog uses `useState(defaultTab)` which only reads the prop once at mount. Because the parent renders <AuthDialog/> unconditionally, the component mounts once with defaultTab='login' and never updates its `tab` state when the parent later flips defaultTab to 'signup'. Fix: `useEffect(() => { if (open) setTab(defaultTab); }, [defaultTab, open]);`. Brute-force RCA: multi-replica backend behind an ingress presents different client.host per request; counter is sharded by IP so lockout requires more attempts."
+}

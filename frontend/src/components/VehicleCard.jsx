@@ -1,18 +1,15 @@
-import { Phone, Home, User, Pencil, Trash2 } from "lucide-react";
-import { Button } from "./ui/button";
+import { Phone, Home, User, Pencil, Trash2, UserCheck } from "lucide-react";
 
-export const VehicleCard = ({ vehicle, isOwned, onEdit, onDelete, index = 0 }) => {
+export const VehicleCard = ({ vehicle, canEdit, isMine, onEdit, onDelete, index = 0 }) => {
   const cleanPhone = (vehicle.phone || "").replace(/[^\d+]/g, "");
   const telHref = `tel:${cleanPhone}`;
 
   const handleCall = (e) => {
-    // Ensure dialer opens even if the default anchor navigation is blocked
-    // by preview iframes, service workers, or handlers on parent elements.
     e.stopPropagation();
     try {
       window.location.href = telHref;
     } catch (_) {
-      // fall back to default anchor behaviour
+      // fallback: default anchor behavior
     }
   };
 
@@ -26,19 +23,33 @@ export const VehicleCard = ({ vehicle, isOwned, onEdit, onDelete, index = 0 }) =
         <div className="plate-badge text-base" data-testid={`plate-${vehicle.id}`}>
           {vehicle.vehicle_number}
         </div>
-        {isOwned && (
-          <span
-            className="text-[0.6rem] tracking-[0.2em] font-bold uppercase bg-[#002FA7] text-white px-2 py-1 rounded-sm"
-            data-testid={`owned-badge-${vehicle.id}`}
-          >
-            You
-          </span>
-        )}
+        <div className="flex items-center gap-1.5">
+          {vehicle.is_guest && (
+            <span
+              className="text-[0.6rem] tracking-[0.2em] font-bold uppercase bg-[#FFD700] text-black px-2 py-1 rounded-sm border-[1.5px] border-black"
+              data-testid={`guest-badge-${vehicle.id}`}
+            >
+              Guest
+            </span>
+          )}
+          {isMine && (
+            <span
+              className="text-[0.6rem] tracking-[0.2em] font-bold uppercase bg-[#002FA7] text-white px-2 py-1 rounded-sm"
+              data-testid={`owned-badge-${vehicle.id}`}
+            >
+              You
+            </span>
+          )}
+        </div>
       </div>
 
       <div className="space-y-1.5 mb-4">
         <div className="flex items-center gap-2 text-sm">
-          <User className="w-4 h-4 text-gray-500" />
+          {vehicle.is_guest ? (
+            <UserCheck className="w-4 h-4 text-gray-500" />
+          ) : (
+            <User className="w-4 h-4 text-gray-500" />
+          )}
           <span className="font-semibold text-black" data-testid={`owner-${vehicle.id}`}>
             {vehicle.owner_name}
           </span>
@@ -46,7 +57,7 @@ export const VehicleCard = ({ vehicle, isOwned, onEdit, onDelete, index = 0 }) =
         <div className="flex items-center gap-2 text-sm">
           <Home className="w-4 h-4 text-gray-500" />
           <span className="font-medium text-gray-700" data-testid={`flat-${vehicle.id}`}>
-            Flat {vehicle.flat_number}
+            {vehicle.is_guest ? "Visiting " : ""}Flat {vehicle.flat_number}
           </span>
         </div>
       </div>
@@ -63,7 +74,7 @@ export const VehicleCard = ({ vehicle, isOwned, onEdit, onDelete, index = 0 }) =
           <span>Call {vehicle.phone}</span>
         </a>
 
-        {isOwned && (
+        {canEdit && (
           <>
             <button
               type="button"
