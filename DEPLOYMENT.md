@@ -178,17 +178,17 @@ INFO:     Uvicorn running on http://0.0.0.0:10000
 INFO:     Application startup complete.
 ```
 
-Your API URL will be printed at the top, e.g., `https://shiv-sampada-api.onrender.com`. **Copy this URL.**
+Your API URL will be printed at the top, e.g., `https://society-parking-api.onrender.com`. **Copy this URL.**
 
 ### 2.4 Smoke test
 
 Open a terminal:
 
 ```bash
-curl https://shiv-sampada-api.onrender.com/api/
+curl https://society-parking-api.onrender.com/api/
 # {"message":"Shiv Sampada Parking API"}
 
-curl -X POST https://shiv-sampada-api.onrender.com/api/auth/login \
+curl -X POST https://society-parking-api.onrender.com/api/auth/login \
   -H "Content-Type: application/json" \
   -d '{"flat_number":"ADMIN","password":"<your_admin_password>"}'
 # should return {"token":"...","user":{...,"is_admin":true}}
@@ -223,7 +223,7 @@ Under **Environment variables (Production)** add:
 
 | Key | Value |
 | --- | --- |
-| `REACT_APP_BACKEND_URL` | `https://shiv-sampada-api.onrender.com` (your Render URL, **no trailing slash**) |
+| `REACT_APP_BACKEND_URL` | `https://society-parking-api.onrender.com` (your Render URL, **no trailing slash**) |
 | `CI` | `false` (prevents CRA from treating warnings as build errors) |
 | `NODE_VERSION` | `20` |
 
