@@ -97,7 +97,7 @@ export const VehicleCard = ({ vehicle, canEdit, isMine, onEdit, onDelete, index 
           className="flex-1 inline-flex items-center justify-center gap-2 h-14 rounded-sm bg-[#16A34A] text-white font-bold text-base btn-brutalist hover:bg-[#15803d] active:scale-[0.98]"
         >
           <Phone className="w-5 h-5" strokeWidth={2.5} />
-          <span>Call {vehicle.phone}</span>
+          <span>{vehicle.phone}</span>
         </a>
 
         {canEdit && (
